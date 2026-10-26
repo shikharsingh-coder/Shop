@@ -1,5 +1,5 @@
 /**
- * An in-process event bus. THIS IS A STUB - you finish it.
+ * An in-process event bus.
  *
  * Requirements:
  *   - a handler that throws must not stop the other handlers
@@ -23,5 +23,39 @@ export interface EventBus {
 }
 
 export function createEventBus(): EventBus {
-  throw new Error("not implemented");
+  const handlers = new Map<EventName, Array<Handler<EventName>>>();
+
+  return {
+    publish(name, payload) {
+      const subscribers = handlers.get(name);
+      if (!subscribers) return 0;
+
+      let reached = 0;
+      for (const handler of [...subscribers]) {
+        reached++;
+        try {
+          handler(payload);
+        } catch {
+          // One subscriber must not prevent delivery to the remaining subscribers.
+        }
+      }
+      return reached;
+    },
+    subscribe(name, fn) {
+      const subscribers = handlers.get(name) ?? [];
+      subscribers.push(fn as Handler<EventName>);
+      handlers.set(name, subscribers);
+
+      let subscribed = true;
+      return () => {
+        if (!subscribed) return;
+        subscribed = false;
+        const index = subscribers.indexOf(fn as Handler<EventName>);
+        if (index !== -1) subscribers.splice(index, 1);
+        if (subscribers.length === 0) handlers.delete(name);
+      };
+    },
+  };
 }
+
+export const eventBus = createEventBus();
