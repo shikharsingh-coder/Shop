@@ -39,6 +39,33 @@ test("unsubscribe stops delivery", () => {
   assert.equal(n, 1);
 });
 
+test("subscribing the same handler twice registers two deliveries", () => {
+  const bus = createEventBus();
+  let n = 0;
+  const handler = () => { n += 1; };
+  const offFirst = bus.subscribe("order.placed", handler);
+  bus.subscribe("order.placed", handler);
+
+  assert.equal(bus.publish("order.placed", payload), 2);
+  assert.equal(n, 2);
+  offFirst();
+  assert.equal(bus.publish("order.placed", payload), 1);
+  assert.equal(n, 3);
+});
+
+test("publish counts only handlers in the delivery snapshot", () => {
+  const bus = createEventBus();
+  let n = 0;
+  bus.subscribe("order.placed", () => {
+    bus.subscribe("order.placed", () => { n += 1; });
+  });
+
+  assert.equal(bus.publish("order.placed", payload), 1);
+  assert.equal(n, 0);
+  assert.equal(bus.publish("order.placed", payload), 2);
+  assert.equal(n, 1);
+});
+
 test("orders publishes order.placed, and notifications subscribes to it", () => {
   reset();
   seed();
